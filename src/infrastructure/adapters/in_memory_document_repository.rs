@@ -1,9 +1,6 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex as StdMutex},
-};
-
+use dashmap::DashMap;
 use once_cell::sync::Lazy;
+use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crate::domain::{
@@ -14,18 +11,20 @@ use crate::domain::{
 /// Global in-memory storage for collaborative documents.
 ///
 /// This static collection maintains document instances across the application.
-/// It uses a thread-safe map with document IDs as keys and document services as values.
+/// It uses a thread-safe concurrent map with document IDs as keys and document services as values.
+/// DashMap provides high-performance concurrent access without global locking.
 /// The `Lazy` initialization ensures the storage is created only when first accessed.
-static DOCUMENTS: Lazy<Arc<StdMutex<HashMap<String, Arc<Mutex<SingleDocumentService>>>>>> =
-    Lazy::new(|| Arc::new(StdMutex::new(HashMap::new())));
+static DOCUMENTS: Lazy<DashMap<String, Arc<Mutex<SingleDocumentService>>>> =
+    Lazy::new(|| DashMap::new());
 
 /// An in-memory implementation of the document repository interface.
 ///
-/// This repository stores all documents in memory using a static `HashMap`.
+/// This repository stores all documents in memory using a static `DashMap`.
 /// It provides a simple, non-persistent storage solution suitable for:
 /// - Development and testing
 /// - Small-scale deployments
 /// - Scenarios where persistence is not required
+/// - High-concurrency access patterns
 ///
 /// Note: All documents are lost when the server restarts.
 ///
@@ -49,14 +48,13 @@ impl DocumentRepository for InMemoryDocumentRepository {
     ///
     /// This is the concrete implementation of document creation logic.
     fn create_document(&self, doc_id: &str) -> Result<Arc<Mutex<SingleDocumentService>>, String> {
-        let mut docs = DOCUMENTS.lock().unwrap();
-
-        if docs.contains_key(doc_id) {
+        // With DashMap, we can check for existence and insert atomically
+        if DOCUMENTS.contains_key(doc_id) {
             return Err(format!("Document with ID '{}' already exists", doc_id));
         }
 
         let doc_service = Arc::new(Mutex::new(SingleDocumentService::new()));
-        docs.insert(doc_id.to_string(), doc_service.clone());
+        DOCUMENTS.insert(doc_id.to_string(), doc_service.clone());
 
         Ok(doc_service)
     }
@@ -65,23 +63,18 @@ impl DocumentRepository for InMemoryDocumentRepository {
     ///
     /// This is the concrete implementation of document retrieval logic.
     fn get_document(&self, doc_id: &str) -> Option<Arc<Mutex<SingleDocumentService>>> {
-        let docs = DOCUMENTS.lock().unwrap();
-        docs.get(doc_id).cloned()
+        // With DashMap, we can directly get values without locking the entire map
+        DOCUMENTS.get(doc_id).map(|entry| entry.value().clone())
     }
 
     /// Retrieves an existing document by ID or creates a new one if it doesn't exist.
     ///
     /// This is the concrete implementation that combines get and create operations.
     fn get_or_create(&self, doc_id: &str) -> Arc<Mutex<SingleDocumentService>> {
-        let mut docs = DOCUMENTS.lock().unwrap();
-
-        if !docs.contains_key(doc_id) {
-            let doc_service = Arc::new(Mutex::new(SingleDocumentService::new()));
-            docs.insert(doc_id.to_string(), doc_service.clone());
-            doc_service
-        } else {
-            docs.get(doc_id).unwrap().clone()
-        }
+        // Use entry API for atomic get-or-insert operations
+        DOCUMENTS.entry(doc_id.to_string()).or_insert_with(|| {
+            Arc::new(Mutex::new(SingleDocumentService::new()))
+        }).value().clone()
     }
 
     /// Updates an existing document.
@@ -92,13 +85,11 @@ impl DocumentRepository for InMemoryDocumentRepository {
         doc_id: &str,
         document: Arc<Mutex<SingleDocumentService>>,
     ) -> Result<(), String> {
-        let mut docs = DOCUMENTS.lock().unwrap();
-
-        if !docs.contains_key(doc_id) {
+        if !DOCUMENTS.contains_key(doc_id) {
             return Err(format!("Document with ID '{}' does not exist", doc_id));
         }
 
-        docs.insert(doc_id.to_string(), document);
+        DOCUMENTS.insert(doc_id.to_string(), document);
         Ok(())
     }
 
@@ -106,9 +97,7 @@ impl DocumentRepository for InMemoryDocumentRepository {
     ///
     /// This is the concrete implementation of document deletion logic.
     fn delete_document(&self, doc_id: &str) -> Result<(), String> {
-        let mut docs = DOCUMENTS.lock().unwrap();
-
-        if docs.remove(doc_id).is_some() {
+        if DOCUMENTS.remove(doc_id).is_some() {
             Ok(())
         } else {
             Err(format!("Document with ID '{}' does not exist", doc_id))
@@ -119,32 +108,29 @@ impl DocumentRepository for InMemoryDocumentRepository {
     ///
     /// This is the concrete implementation of document listing logic.
     fn list_documents(&self) -> Vec<String> {
-        let docs = DOCUMENTS.lock().unwrap();
-        docs.keys().cloned().collect()
+        // Collect keys from DashMap
+        DOCUMENTS.iter().map(|entry| entry.key().clone()).collect()
     }
 
     /// Checks if a document exists.
     ///
-    /// This is the concrete implementation of document existence check logic.
+    /// This is the concrete implementation that checks document existence.
     fn exists(&self, doc_id: &str) -> bool {
-        let docs = DOCUMENTS.lock().unwrap();
-        docs.contains_key(doc_id)
+        DOCUMENTS.contains_key(doc_id)
     }
 
     /// Gets the total number of documents in the repository.
     ///
-    /// This is the concrete implementation of document counting logic.
+    /// This is the concrete implementation that counts documents.
     fn count(&self) -> usize {
-        let docs = DOCUMENTS.lock().unwrap();
-        docs.len()
+        DOCUMENTS.len()
     }
 
     /// Clears all documents from the repository.
     ///
     /// This is the concrete implementation of repository clearing logic.
     fn clear(&self) -> Result<(), String> {
-        let mut docs = DOCUMENTS.lock().unwrap();
-        docs.clear();
+        DOCUMENTS.clear();
         Ok(())
     }
 }

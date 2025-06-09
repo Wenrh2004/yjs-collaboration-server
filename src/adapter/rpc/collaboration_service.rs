@@ -1,8 +1,9 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
+use dashmap::DashMap;
 use futures::StreamExt;
-use tokio::sync::{Mutex, mpsc};
+use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 use volo_gen::collaboration::{
     AwarenessUpdate, ClientMessage, CollaborationService, DocumentState, ErrorMessage, ErrorType,
@@ -31,7 +32,8 @@ pub struct CollaborationServiceImpl<R: DocumentRepository> {
     /// Document use cases service handling core business logic for documents
     document_use_cases: Arc<DocumentUseCases<R>>,
     /// Manages active connection sessions with session ID as key and message sender channel as value
-    active_sessions: Arc<Mutex<HashMap<String, mpsc::Sender<Result<ServerMessage, Status>>>>>,
+    /// Using DashMap for improved concurrent performance compared to Mutex<HashMap>
+    active_sessions: Arc<DashMap<String, mpsc::Sender<Result<ServerMessage, Status>>>>,
 }
 
 impl<R: DocumentRepository + Send + Sync + 'static> CollaborationServiceImpl<R> {
@@ -47,7 +49,7 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationServiceImpl<R> 
     pub fn new(document_use_cases: Arc<DocumentUseCases<R>>) -> Self {
         Self {
             document_use_cases,
-            active_sessions: Arc::new(Mutex::new(HashMap::new())),
+            active_sessions: Arc::new(DashMap::new()),
         }
     }
 
@@ -229,8 +231,11 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationServiceImpl<R> 
         message: ServerMessage,
         exclude_client: Option<&str>,
     ) {
-        let sessions = self.active_sessions.lock().await;
-        for (session_id, sender) in sessions.iter() {
+        // With DashMap, we can iterate over entries without locking the entire map
+        for entry in self.active_sessions.iter() {
+            let session_id = entry.key();
+            let sender = entry.value();
+
             if let Some(exclude) = exclude_client {
                 if session_id.contains(exclude) {
                     continue;
@@ -278,11 +283,8 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationService
                     Ok(msg) => {
                         let session_id = format!("{}_{}", msg.document_id, msg.client_id);
 
-                        // Register session
-                        {
-                            let mut sessions = service.active_sessions.lock().await;
-                            sessions.insert(session_id.clone(), tx.clone());
-                        }
+                        // Register session - with DashMap, no explicit locking needed
+                        service.active_sessions.insert(session_id.clone(), tx.clone());
 
                         if let Err(e) = service.handle_client_message(msg, &tx).await {
                             error!("Error handling client message: {:?}", e);
