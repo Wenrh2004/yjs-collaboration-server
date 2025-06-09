@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
-
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD;
 use futures::StreamExt;
 use tokio::sync::{Mutex, mpsc};
 use tracing::{error, info, warn};
@@ -91,7 +92,7 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationServiceImpl<R> 
                             SyncResponse {
                                 update_data: response
                                     .update
-                                    .map(|u| base64::decode(&u).unwrap_or_default())
+                                    .map(|u| STANDARD.decode(&u).unwrap_or_default())
                                     .unwrap_or_default()
                                     .into(),
                                 state_vector: sync_req.state_vector,
@@ -335,13 +336,13 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationService
             state_vector: response
                 .update
                 .as_ref()
-                .map(|u| base64::decode(&u).unwrap_or_default())
+                .map(|u| STANDARD.decode(&u).unwrap_or_default())
                 .unwrap_or_default()
                 .into(), // TODO: extract actual state vector from response
             document_data: response
                 .update
                 .as_ref()
-                .map(|u| base64::decode(&u).unwrap_or_default())
+                .map(|u| STANDARD.decode(&u).unwrap_or_default())
                 .unwrap_or_default()
                 .into(),
             active_users: vec![], // TODO: implement active user management
