@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use volo_http::{server::route::get, Router};
+use volo_http::{Router, server::route::get};
 
 use crate::{
-    adapter::websocket::ws_handler::handle_websocket_upgrade,
+    adapter::http::websocket::ws_handler::handle_websocket_upgrade,
     application::use_cases::document_use_cases::DocumentUseCases,
     domain::repositories::document_repository::DocumentRepository,
 };

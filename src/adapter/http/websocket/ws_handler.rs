@@ -6,8 +6,8 @@ use sonic_rs::{from_str, to_string};
 use tracing::{info, warn};
 use uuid::Uuid;
 use volo_http::{
-    response::ServerResponse,
-    server::utils::{Message, WebSocket, WebSocketUpgrade},
+    response::Response,
+    server::utils::ws::{Message, WebSocket, WebSocketUpgrade},
 };
 
 use crate::{
@@ -22,7 +22,7 @@ use crate::{
 pub async fn handle_websocket_upgrade<R>(
     ws: WebSocketUpgrade,
     document_use_cases: Arc<DocumentUseCases<R>>,
-) -> ServerResponse
+) -> Response
 where
     R: DocumentRepository + Send + Sync + 'static,
 {
@@ -46,7 +46,7 @@ impl<R: DocumentRepository + Send + Sync + 'static> WebSocketHandler<R> {
     }
 
     // Handle WebSocket upgrade request
-    pub fn handle_upgrade(&self, ws: WebSocketUpgrade) -> ServerResponse {
+    pub fn handle_upgrade(&self, ws: WebSocketUpgrade) -> Response {
         let document_use_cases = self.document_use_cases.clone();
         ws.on_upgrade(move |socket| {
             Box::pin(Self::handle_socket(socket, document_use_cases))

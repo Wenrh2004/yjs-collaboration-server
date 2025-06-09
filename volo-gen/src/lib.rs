@@ -1,0 +1,5 @@
+mod r#gen {
+    include!(concat!(env!("OUT_DIR"), "/volo_gen.rs"));
+}
+
+pub use r#gen::volo_gen::*;
