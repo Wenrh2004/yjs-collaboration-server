@@ -15,7 +15,7 @@ use crate::{DocumentRepository, DocumentUseCases};
 
 pub struct CollaborationServiceImpl<R: DocumentRepository> {
     document_use_cases: Arc<DocumentUseCases<R>>,
-    // 管理活跃连接的会话
+    // Manage active connection sessions
     active_sessions: Arc<Mutex<HashMap<String, mpsc::Sender<Result<ServerMessage, Status>>>>>,
 }
 
@@ -29,6 +29,7 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationServiceImpl<R> 
 
     async fn handle_client_message(
         &self,
+        // Manage active connection sessions
         client_msg: ClientMessage,
         tx: &mpsc::Sender<Result<ServerMessage, Status>>,
     ) -> Result<(), Status> {
@@ -80,7 +81,7 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationServiceImpl<R> 
                         };
                         let _ = tx.send(Ok(error_msg)).await;
                     } else {
-                        // 广播更新给其他客户端
+                        // Broadcast update to other clients
                         self.broadcast_update(&document_id, &client_id, &update.update_data)
                             .await;
                     }
@@ -88,7 +89,7 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationServiceImpl<R> 
                 client_message::MessageType::JoinDocument(join) => {
                     info!("User {} joined document {}", join.user_id, document_id);
 
-                    // 通知其他用户
+                    // Notify other users
                     let user_joined = ServerMessage {
                         document_id: document_id.clone().into(),
                         timestamp: chrono::Utc::now().timestamp(),
@@ -120,10 +121,11 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationServiceImpl<R> 
                         .await;
                 }
                 client_message::MessageType::Awareness(awareness) => {
-                    // 广播感知更新
+                    // Broadcast awareness update
                     let awareness_msg = ServerMessage {
                         document_id: document_id.clone().into(),
                         timestamp: chrono::Utc::now().timestamp(),
+                        // Handle heartbeat, update user activity status
                         message_type: Some(server_message::MessageType::Awareness(
                             AwarenessUpdate {
                                 client_id: awareness.client_id.clone(),
@@ -156,12 +158,10 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationServiceImpl<R> 
             document_id: document_id.to_string().into(),
             timestamp: chrono::Utc::now().timestamp(),
             message_type: Some(server_message::MessageType::Update(UpdateMessage {
-                update_data: update_data.to_vec().into(),
-                origin_client_id: origin_client_id.to_string().into(),
-                sequence_number: 0, // 可以实现序列号管理
+                // Sequence numbers can be implemented
+                sequence_number: 0,
             })),
         };
-
         self.broadcast_to_document(document_id, update_msg, Some(origin_client_id))
             .await;
     }
@@ -206,7 +206,7 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationService
                     Ok(msg) => {
                         let session_id = format!("{}_{}", msg.document_id, msg.client_id);
 
-                        // 注册会话
+                        // Register session
                         {
                             let mut sessions = service.active_sessions.lock().await;
                             sessions.insert(session_id.clone(), tx.clone());
@@ -248,13 +248,17 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationService
             .await;
 
         let document_state = DocumentState {
-            state_vector: vec![].into(), // TODO: 从response中提取实际的state vector
+            state_vector: response
+                .update
+                .map(|u| base64::decode(&u).unwrap_or_default())
+                .unwrap_or_default()
+                .into(), // TODO: extract actual state vector from response
             document_data: response
                 .update
                 .map(|u| base64::decode(&u).unwrap_or_default())
                 .unwrap_or_default()
                 .into(),
-            active_users: vec![], // TODO: 实现活跃用户管理
+            active_users: vec![], // TODO: implement active user management
             last_modified: chrono::Utc::now().timestamp(),
         };
 
@@ -269,7 +273,7 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationService
     ) -> Result<Response<GetActiveUsersResponse>, Status> {
         let _req = request.into_inner();
 
-        // TODO: 实现从会话管理中获取活跃用户
+        // TODO: implement fetching active users from session management
         let active_users = vec![];
 
         Ok(Response::new(GetActiveUsersResponse { active_users }))

@@ -13,32 +13,32 @@ impl CollaborativeDocument {
         Self { doc: Doc::new() }
     }
 
-    /// 获取文档的状态向量
+    /// Get the document's state vector
     pub fn get_state_vector(&self) -> Vec<u8> {
         let txn = self.doc.transact();
         let sv = txn.state_vector();
         sv.encode_v1()
     }
 
-    /// 应用更新到文档
+    /// Apply updates to the document
     pub fn apply_update(&mut self, update: &[u8]) -> Result<Vec<u8>, String> {
         if let Ok(update) = Update::decode_v1(update) {
             let mut txn = self.doc.transact_mut();
 
-            // 应用更新并处理可能的错误
-            if let Err(e) = txn.apply_update(update) {
-                return Err(format!("Failed to apply update: {}", e));
+            // Apply update and handle potential errors
+            let result = txn.apply_update(update);
+            if let Err(e) = result {
+                return Err(e.to_string());
             }
 
-            // 获取更新后的状态向量
-            let sv = txn.state_vector().encode_v1();
-            Ok(sv)
+            // Get the updated state vector
+            Ok(self.get_state_vector())
         } else {
             Err("Failed to decode update".to_string())
         }
     }
 
-    /// 获取客户端缺失的更新
+    /// Get missing updates for the client
     pub fn get_missing_updates(&self, client_state: &[u8]) -> Result<Vec<u8>, String> {
         if let Ok(sv) = StateVector::decode_v1(client_state) {
             let txn = self.doc.transact();

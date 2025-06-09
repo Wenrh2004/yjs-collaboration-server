@@ -7,15 +7,15 @@ use super::{
     servers::{HttpServer, RpcServer},
 };
 
-/// 应用引导服务
-/// 负责应用的整体启动和依赖协调
+/// Application bootstrap service
+/// Responsible for overall application startup and dependency coordination
 pub struct ApplicationBootstrap {
     config: AppConfig,
     container: Container,
 }
 
 impl ApplicationBootstrap {
-    /// 创建应用引导实例
+    /// Create an application bootstrap instance
     pub fn new() -> Self {
         let config = AppConfig::from_env();
         config.init_logging();
@@ -25,16 +25,16 @@ impl ApplicationBootstrap {
         Self { config, container }
     }
 
-    /// 启动应用
-    /// 根据配置启动不同的服务器
+    /// Run the application
+    /// Start servers based on configuration
     pub async fn run(self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         info!("Starting Yjs Collaboration Server");
         info!("Configuration: {:?}", self.config);
 
-        // 根据配置启动不同的服务器
+        // Start servers based on configuration
         match (self.config.enable_http, self.config.enable_grpc) {
             (true, true) => {
-                // 同时启动HTTP和gRPC服务器
+                // Start both HTTP and gRPC servers
                 let http_server = HttpServer::new(
                     self.config.http_addr,
                     self.container.get_document_use_cases(),
@@ -48,7 +48,7 @@ impl ApplicationBootstrap {
                 try_join!(http_server.start(), rpc_server.start())?;
             }
             (true, false) => {
-                // 只启动HTTP服务器
+                // Start only HTTP server
                 info!("Starting HTTP server only");
                 let http_server = HttpServer::new(
                     self.config.http_addr,
@@ -57,7 +57,7 @@ impl ApplicationBootstrap {
                 http_server.start().await?;
             }
             (false, true) => {
-                // 只启动gRPC服务器
+                // Start only gRPC server
                 info!("Starting gRPC server only");
                 let rpc_server = RpcServer::new(
                     self.config.grpc_addr,

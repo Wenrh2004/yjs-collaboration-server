@@ -10,8 +10,8 @@ use volo_http::{
 
 use crate::{DocumentUseCases, InMemoryDocumentRepository};
 
-/// HTTP服务器应用服务
-/// 负责HTTP服务器的启动和生命周期管理
+/// HTTP server application service
+/// Responsible for starting and managing the lifecycle of the HTTP server
 pub struct HttpServer {
     addr: SocketAddr,
     document_use_cases: Arc<DocumentUseCases<InMemoryDocumentRepository>>,
@@ -28,16 +28,16 @@ impl HttpServer {
         }
     }
 
-    /// 超时处理器
+    /// Timeout handler
     fn timeout_handler(_: &ServerContext) -> (StatusCode, &'static str) {
         (StatusCode::INTERNAL_SERVER_ERROR, "Timeout!\n")
     }
 
-    /// 启动HTTP服务器
+    /// Start the HTTP server
     pub async fn start(self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         info!("Starting HTTP server on {}", self.addr);
 
-        // 使用lib.rs中的create_router函数
+        // Use the create_router function from lib.rs
         let app = crate::create_router().layer(TimeoutLayer::new(
             Duration::from_secs(30),
             Self::timeout_handler,

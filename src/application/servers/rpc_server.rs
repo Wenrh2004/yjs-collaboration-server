@@ -5,8 +5,8 @@ use volo_grpc::server::{Server, ServiceBuilder};
 
 use crate::{DocumentUseCases, InMemoryDocumentRepository, adapter::rpc::CollaborationServiceImpl};
 
-/// RPC服务器应用服务
-/// 负责gRPC服务器的启动和生命周期管理
+/// RPC server application service
+/// Responsible for starting and managing the lifecycle of the gRPC server
 pub struct RpcServer {
     addr: SocketAddr,
     document_use_cases: Arc<DocumentUseCases<InMemoryDocumentRepository>>,
@@ -23,11 +23,11 @@ impl RpcServer {
         }
     }
 
-    /// 启动gRPC服务器
+    /// Start the gRPC server
     pub async fn start(self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         info!("Starting gRPC server on {}", self.addr);
 
-        // 创建协同服务
+        // Create collaboration service
         let collaboration_service = CollaborationServiceImpl::new(self.document_use_cases);
 
         let addr = volo::net::Address::from(self.addr);
