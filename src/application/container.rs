@@ -2,26 +2,26 @@ use std::sync::Arc;
 
 use crate::{DocumentUseCases, InMemoryDocumentRepository};
 
-/// 依赖注入容器
-/// 遵循DDD架构，管理所有层的依赖关系
+/// Dependency injection container
+/// Follows DDD architecture, manages dependencies across layers
 pub struct Container {
-    // 应用层
+    // Application layer
     pub document_use_cases: Arc<DocumentUseCases<InMemoryDocumentRepository>>,
 }
 
 impl Container {
-    /// 创建并配置所有依赖
+    /// Create and configure all dependencies
     pub fn new() -> Self {
-        // 基础设施层 - 创建仓库
+        // Infrastructure layer - create repository
         let document_repository = InMemoryDocumentRepository::new();
 
-        // 应用层 - 创建用例服务
+        // Application layer - create use case service
         let document_use_cases = Arc::new(DocumentUseCases::new(document_repository));
 
         Self { document_use_cases }
     }
 
-    /// 获取文档用例服务
+    /// Get document use case service
     pub fn get_document_use_cases(&self) -> Arc<DocumentUseCases<InMemoryDocumentRepository>> {
         self.document_use_cases.clone()
     }

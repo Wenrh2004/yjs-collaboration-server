@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-/// 应用配置结构
+/// Application configuration struct
 #[derive(Debug, Clone)]
 pub struct AppConfig {
     pub http_addr: SocketAddr,
@@ -23,7 +23,7 @@ impl Default for AppConfig {
 }
 
 impl AppConfig {
-    /// 从环境变量创建配置
+    /// Create configuration from environment variables
     pub fn from_env() -> Self {
         let mut config = Self::default();
 
@@ -54,7 +54,7 @@ impl AppConfig {
         config
     }
 
-    /// 初始化日志
+    /// Initialize logging
     pub fn init_logging(&self) {
         tracing_subscriber::fmt()
             .with_target(false)
