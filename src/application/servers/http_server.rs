@@ -2,13 +2,16 @@ use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use tracing::info;
 use volo_http::{
-    Address,
     context::ServerContext,
     http::StatusCode,
-    server::{Server, layer::TimeoutLayer},
+    server::{layer::TimeoutLayer, Server},
+    Address,
 };
 
-use crate::{DocumentUseCases, InMemoryDocumentRepository};
+use crate::{
+    adapter::http::router, application::use_cases::document_use_cases::DocumentUseCases,
+    infrastructure::adapters::in_memory_document_repository::InMemoryDocumentRepository,
+};
 
 /// HTTP server application service
 /// Responsible for starting and managing the lifecycle of the HTTP server
@@ -38,7 +41,7 @@ impl HttpServer {
         info!("Starting HTTP server on {}", self.addr);
 
         // Use the create_router function from lib.rs
-        let app = crate::create_router().layer(TimeoutLayer::new(
+        let app = router::create_router().layer(TimeoutLayer::new(
             Duration::from_secs(30),
             Self::timeout_handler,
         ));

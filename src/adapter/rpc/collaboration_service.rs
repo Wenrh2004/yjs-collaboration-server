@@ -1,17 +1,20 @@
 use std::{collections::HashMap, sync::Arc};
 
 use futures::StreamExt;
-use tokio::sync::{Mutex, mpsc};
+use tokio::sync::{mpsc, Mutex};
 use tracing::{error, info, warn};
 use volo_gen::collaboration::{
-    AwarenessUpdate, ClientMessage, CollaborationService, DocumentState, ErrorMessage, ErrorType,
-    GetActiveUsersRequest, GetActiveUsersResponse, GetDocumentStateRequest,
-    GetDocumentStateResponse, JoinDocument, LeaveDocument, ServerMessage, SyncResponse,
-    UpdateMessage, UserJoined, UserLeft, client_message, server_message,
+    client_message, server_message, AwarenessUpdate, ClientMessage, CollaborationService, DocumentState,
+    ErrorMessage, ErrorType, GetActiveUsersRequest,
+    GetActiveUsersResponse, GetDocumentStateRequest, GetDocumentStateResponse, JoinDocument, LeaveDocument,
+    ServerMessage, SyncResponse, UpdateMessage, UserJoined, UserLeft,
 };
 use volo_grpc::{BoxStream, RecvStream, Request, Response, Status};
 
-use crate::{DocumentRepository, DocumentUseCases};
+use crate::{
+    application::use_cases::document_use_cases::DocumentUseCases,
+    domain::repositories::document_repository::DocumentRepository,
+};
 
 pub struct CollaborationServiceImpl<R: DocumentRepository> {
     document_use_cases: Arc<DocumentUseCases<R>>,
@@ -160,6 +163,8 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationServiceImpl<R> 
             message_type: Some(server_message::MessageType::Update(UpdateMessage {
                 // Sequence numbers can be implemented
                 sequence_number: 0,
+                update_data: update_data.to_vec().into(),
+                origin_client_id: origin_client_id.to_string().into(),
             })),
         };
         self.broadcast_to_document(document_id, update_msg, Some(origin_client_id))
@@ -250,11 +255,13 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationService
         let document_state = DocumentState {
             state_vector: response
                 .update
+                .as_ref()
                 .map(|u| base64::decode(&u).unwrap_or_default())
                 .unwrap_or_default()
                 .into(), // TODO: extract actual state vector from response
             document_data: response
                 .update
+                .as_ref()
                 .map(|u| base64::decode(&u).unwrap_or_default())
                 .unwrap_or_default()
                 .into(),

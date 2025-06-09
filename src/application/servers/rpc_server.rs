@@ -3,7 +3,11 @@ use std::{net::SocketAddr, sync::Arc};
 use tracing::info;
 use volo_grpc::server::{Server, ServiceBuilder};
 
-use crate::{DocumentUseCases, InMemoryDocumentRepository, adapter::rpc::CollaborationServiceImpl};
+use crate::{
+    adapter::rpc::CollaborationServiceImpl,
+    application::use_cases::document_use_cases::DocumentUseCases,
+    infrastructure::adapters::in_memory_document_repository::InMemoryDocumentRepository,
+};
 
 /// RPC server application service
 /// Responsible for starting and managing the lifecycle of the gRPC server

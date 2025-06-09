@@ -18,7 +18,20 @@ use crate::{
     },
 };
 
-// Standalone WebSocket handler function for the routing system
+/// Handles WebSocket upgrade requests from the routing system.
+///
+/// This standalone function serves as an entry point for WebSocket connections
+/// in the HTTP router. It upgrades HTTP connections to WebSocket protocol and
+/// delegates the connection handling to the `WebSocketHandler`.
+///
+/// # Arguments
+///
+/// * `ws` - The WebSocket upgrade request
+/// * `document_use_cases` - Document use cases service for collaboration operations
+///
+/// # Returns
+///
+/// A response that upgrades the connection to WebSocket protocol
 pub async fn handle_websocket_upgrade<R>(
     ws: WebSocketUpgrade,
     document_use_cases: Arc<DocumentUseCases<R>>,
@@ -34,18 +47,43 @@ where
     })
 }
 
-// WebSocket connection handler
+/// WebSocket connection handler for collaborative document editing.
+///
+/// This handler manages WebSocket connections with clients for real-time
+/// document collaboration. It processes various message types including:
+/// - Document synchronization requests
+/// - Document updates
+/// - State vector synchronization
+///
+/// It also maintains the connection state and broadcasts updates to clients.
 #[derive(Clone)]
 pub struct WebSocketHandler<R: DocumentRepository> {
     document_use_cases: Arc<DocumentUseCases<R>>,
 }
 
 impl<R: DocumentRepository + Send + Sync + 'static> WebSocketHandler<R> {
+    /// Creates a new WebSocket handler with the provided document use cases.
+    ///
+    /// # Arguments
+    ///
+    /// * `document_use_cases` - Document use cases service for collaboration operations
+    ///
+    /// # Returns
+    ///
+    /// A new `WebSocketHandler` instance
     pub fn new(document_use_cases: Arc<DocumentUseCases<R>>) -> Self {
         Self { document_use_cases }
     }
 
-    // Handle WebSocket upgrade request
+    /// Handles a WebSocket upgrade request and sets up the connection.
+    ///
+    /// # Arguments
+    ///
+    /// * `ws` - The WebSocket upgrade request
+    ///
+    /// # Returns
+    ///
+    /// A response that upgrades the connection to WebSocket protocol
     pub fn handle_upgrade(&self, ws: WebSocketUpgrade) -> Response {
         let document_use_cases = self.document_use_cases.clone();
         ws.on_upgrade(move |socket| {
@@ -54,7 +92,18 @@ impl<R: DocumentRepository + Send + Sync + 'static> WebSocketHandler<R> {
         })
     }
 
-    // Handle WebSocket connection
+    /// Main WebSocket connection handler that processes messages from clients.
+    ///
+    /// This method:
+    /// 1. Establishes a new WebSocket connection with a client
+    /// 2. Processes incoming messages based on their type
+    /// 3. Forwards document updates between collaborating clients
+    /// 4. Maintains connection until client disconnects
+    ///
+    /// # Arguments
+    ///
+    /// * `socket` - The WebSocket connection
+    /// * `document_use_cases` - Document use cases service for collaboration operations
     async fn handle_socket(mut socket: WebSocket, document_use_cases: Arc<DocumentUseCases<R>>) {
         let client_id = Uuid::new_v4().to_string();
         let mut active_doc_id: Option<String> = None;

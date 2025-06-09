@@ -1,6 +1,6 @@
 use std::sync::Arc;
-
-use crate::{DocumentUseCases, InMemoryDocumentRepository};
+use crate::application::use_cases::document_use_cases::DocumentUseCases;
+use crate::infrastructure::adapters::in_memory_document_repository::InMemoryDocumentRepository;
 
 /// Dependency injection container
 /// Follows DDD architecture, manages dependencies across layers
