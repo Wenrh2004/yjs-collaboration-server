@@ -4,10 +4,9 @@ use volo_http::{Router, server::route::get};
 
 use crate::{
     adapter::http::websocket::ws_handler::handle_websocket_upgrade,
-    application::use_cases::document_use_cases::DocumentUseCases,
+    application::services::document_application_service::DocumentUseCases,
     domain::repositories::document_repository::DocumentRepository,
 };
-use crate::infrastructure::adapters::in_memory_document_repository::InMemoryDocumentRepository;
 
 /// HTTP router configuration for the collaboration server.
 ///
@@ -64,26 +63,3 @@ impl<R: DocumentRepository + Send + Sync + 'static> HttpRouter<R> {
         )
     }
 }
-
-/// Creates and configures the default HTTP router using the in-memory document repository.
-///
-/// This is the main entry point for applications using this library.
-///
-/// # Returns
-///
-/// A configured `Router` instance ready to handle HTTP requests for document collaboration.
-/// ```
-pub fn create_router() -> Router {
-    // Create repository
-    let repository = InMemoryDocumentRepository::new();
-
-    // Create use case service
-    let document_use_cases = Arc::new(DocumentUseCases::new(repository));
-
-    // Create HTTP router
-    let http_router = HttpRouter::new(document_use_cases);
-
-    // Build and return the router
-    http_router.build_router()
-}
-

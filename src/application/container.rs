@@ -1,6 +1,10 @@
 use std::sync::Arc;
-use crate::application::use_cases::document_use_cases::DocumentUseCases;
-use crate::infrastructure::adapters::in_memory_document_repository::InMemoryDocumentRepository;
+
+use crate::{
+    application::services::document_application_service::DocumentUseCases,
+    domain::factory::RepositoryFactory,
+    infrastructure::adapters::in_memory_document_repository::InMemoryDocumentRepository,
+};
 
 /// Dependency injection container
 /// Follows DDD architecture, manages dependencies across layers
@@ -10,10 +14,10 @@ pub struct Container {
 }
 
 impl Container {
-    /// Create and configure all dependencies
+    /// Create and configure all dependencies using domain factory
     pub fn new() -> Self {
-        // Infrastructure layer - create repository
-        let document_repository = InMemoryDocumentRepository::new();
+        // Use domain factory to create infrastructure dependencies
+        let document_repository = RepositoryFactory::create_document_repository();
 
         // Application layer - create use case service
         let document_use_cases = Arc::new(DocumentUseCases::new(document_repository));

@@ -5,7 +5,7 @@ use volo_grpc::server::{Server, ServiceBuilder};
 
 use crate::{
     adapter::rpc::CollaborationServiceImpl,
-    application::use_cases::document_use_cases::DocumentUseCases,
+    application::services::document_application_service::DocumentUseCases,
     infrastructure::adapters::in_memory_document_repository::InMemoryDocumentRepository,
 };
 

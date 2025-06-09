@@ -14,11 +14,8 @@ keywords = [
     "yjs",
     "websocket",
     "volo",
-    "rust",
-    "volo",
-    "volo-http",
 ]
-categories = ["network-programming", "realtime", "asynchronous", "web-server"]
+categories = ["network-programming", "asynchronous"]
 
 # Binary configurations
 [[bin]]
@@ -40,18 +37,9 @@ volo-http = { workspace = true }
 volo-grpc = { workspace = true }
 volo-gen = { path = "volo-gen" }
 
-# gRPC dependencies
-pilota = { workspace = true }
-prost = { workspace = true }
-prost-types = { workspace = true }
-tonic = { workspace = true }
-tonic-build = { workspace = true }
-
 # Asynchronous runtime
 tokio = { workspace = true }
-tokio-stream = { workspace = true }
 futures-util = { workspace = true }
-anyhow = { workspace = true }
 futures = { workspace = true }
 async-stream = { workspace = true }
 
@@ -61,6 +49,7 @@ yrs = "0.23.4"
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 sonic-rs = "0.5.1"
+serde_yaml = "0.9.32" # YAML 配置解析
 
 # Time and date
 chrono = { version = "0.4", features = ["serde"] }
@@ -78,12 +67,7 @@ volo-http = { version = "*", features = ["full"] }
 volo-grpc = "0.10.4"
 volo-build = "0.10.4"
 pilota = "*"
-prost = "0.13"
-prost-types = "0.13"
-tonic = "0.13"
-tonic-build = "0.13"
 tokio = { version = "1", features = ["full"] }
-tokio-stream = "0.1"
 futures-util = "0.3.31"
 anyhow = "1.0"
 futures = "0.3"

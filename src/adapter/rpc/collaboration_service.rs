@@ -1,28 +1,48 @@
 use std::{collections::HashMap, sync::Arc};
 
 use futures::StreamExt;
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::{Mutex, mpsc};
 use tracing::{error, info, warn};
 use volo_gen::collaboration::{
-    client_message, server_message, AwarenessUpdate, ClientMessage, CollaborationService, DocumentState,
-    ErrorMessage, ErrorType, GetActiveUsersRequest,
-    GetActiveUsersResponse, GetDocumentStateRequest, GetDocumentStateResponse, JoinDocument, LeaveDocument,
-    ServerMessage, SyncResponse, UpdateMessage, UserJoined, UserLeft,
+    AwarenessUpdate, ClientMessage, CollaborationService, DocumentState, ErrorMessage, ErrorType,
+    GetActiveUsersRequest, GetActiveUsersResponse, GetDocumentStateRequest,
+    GetDocumentStateResponse, ServerMessage, SyncResponse,
+    UpdateMessage, UserJoined, UserLeft, client_message, server_message,
 };
 use volo_grpc::{BoxStream, RecvStream, Request, Response, Status};
 
 use crate::{
-    application::use_cases::document_use_cases::DocumentUseCases,
+    application::services::document_application_service::DocumentUseCases,
     domain::repositories::document_repository::DocumentRepository,
 };
 
+
+/// Implementation of the Yjs collaboration gRPC service.
+///
+/// This struct handles client connections, manages active sessions,
+/// and provides real-time collaboration features for documents including
+/// synchronization, updates, and user presence notifications.
+///
+/// # Type Parameters
+///
+/// * `R` - A type that implements the `DocumentRepository` trait.
 pub struct CollaborationServiceImpl<R: DocumentRepository> {
+    /// Document use cases service handling core business logic for documents
     document_use_cases: Arc<DocumentUseCases<R>>,
-    // Manage active connection sessions
+    /// Manages active connection sessions with session ID as key and message sender channel as value
     active_sessions: Arc<Mutex<HashMap<String, mpsc::Sender<Result<ServerMessage, Status>>>>>,
 }
 
 impl<R: DocumentRepository + Send + Sync + 'static> CollaborationServiceImpl<R> {
+    /// Creates a new collaboration service instance.
+    ///
+    /// # Parameters
+    ///
+    /// * `document_use_cases` - An Arc reference to document use cases service
+    ///
+    /// # Returns
+    ///
+    /// A new instance of `CollaborationServiceImpl`
     pub fn new(document_use_cases: Arc<DocumentUseCases<R>>) -> Self {
         Self {
             document_use_cases,
@@ -30,6 +50,23 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationServiceImpl<R> 
         }
     }
 
+    /// Handles messages received from clients.
+    ///
+    /// Processes different message types such as sync requests, document updates,
+    /// or users joining a document.
+    ///
+    /// # Parameters
+    ///
+    /// * `client_msg` - The message received from the client
+    /// * `tx` - Channel for sending responses back to the client
+    ///
+    /// # Returns
+    ///
+    /// A Result indicating success or failure with appropriate status
+    ///
+    /// # Errors
+    ///
+    /// Returns a gRPC Status error if message processing fails
     async fn handle_client_message(
         &self,
         // Manage active connection sessions
@@ -151,6 +188,13 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationServiceImpl<R> 
         Ok(())
     }
 
+    /// Broadcasts document update messages to other clients.
+    ///
+    /// # Parameters
+    ///
+    /// * `document_id` - Unique identifier for the document
+    /// * `origin_client_id` - ID of the client that sent the update
+    /// * `update_data` - The update data content
     async fn broadcast_update(
         &self,
         document_id: &str,
@@ -171,6 +215,13 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationServiceImpl<R> 
             .await;
     }
 
+    /// Broadcasts a message to all active sessions for a document.
+    ///
+    /// # Parameters
+    ///
+    /// * `document_id` - Unique identifier for the document
+    /// * `message` - The message to broadcast
+    /// * `exclude_client` - Optional client ID to exclude from broadcast
     async fn broadcast_to_document(
         &self,
         document_id: &str,
@@ -197,6 +248,21 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationServiceImpl<R> 
 impl<R: DocumentRepository + Send + Sync + 'static> CollaborationService
     for CollaborationServiceImpl<R>
 {
+    /// Handles collaboration requests from clients.
+    ///
+    /// Establishes a bidirectional streaming connection for real-time collaboration.
+    ///
+    /// # Parameters
+    ///
+    /// * `request` - Request object containing a stream of client messages
+    ///
+    /// # Returns
+    ///
+    /// A response object containing a stream for sending server messages to the client
+    ///
+    /// # Errors
+    ///
+    /// Returns a gRPC Status error if the collaboration session cannot be established
     async fn collaborate(
         &self,
         request: Request<RecvStream<ClientMessage>>,
@@ -240,6 +306,19 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationService
         Ok(Response::new(Box::pin(output_stream)))
     }
 
+    /// Gets the current state of a document.
+    ///
+    /// # Parameters
+    ///
+    /// * `request` - Request containing the document ID
+    ///
+    /// # Returns
+    ///
+    /// A response containing the current document state
+    ///
+    /// # Errors
+    ///
+    /// Returns a gRPC Status error if document state retrieval fails
     async fn get_document_state(
         &self,
         request: Request<GetDocumentStateRequest>,
@@ -274,6 +353,19 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationService
         }))
     }
 
+    /// Gets the list of currently active users.
+    ///
+    /// # Parameters
+    ///
+    /// * `request` - Request containing query parameters
+    ///
+    /// # Returns
+    ///
+    /// A response containing the list of active users
+    ///
+    /// # Errors
+    ///
+    /// Returns a gRPC Status error if user information retrieval fails
     async fn get_active_users(
         &self,
         request: Request<GetActiveUsersRequest>,
@@ -287,7 +379,13 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationService
     }
 }
 
+/// Implementation of Clone for CollaborationServiceImpl
 impl<R: DocumentRepository> Clone for CollaborationServiceImpl<R> {
+    /// Creates a clone of this collaboration service instance.
+    ///
+    /// # Returns
+    ///
+    /// A new `CollaborationServiceImpl` instance with the same references
     fn clone(&self) -> Self {
         Self {
             document_use_cases: Arc::clone(&self.document_use_cases),

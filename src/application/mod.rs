@@ -2,7 +2,7 @@ pub mod bootstrap;
 pub mod config;
 pub mod container;
 pub mod servers;
-pub mod use_cases;
+pub mod services;
 
 // Re-export main types
 pub use bootstrap::ApplicationBootstrap;

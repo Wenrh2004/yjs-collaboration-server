@@ -74,11 +74,13 @@ High-performance real-time collaborative document editing server built with Rust
 ## 🏗️ Architecture
 
 ### Domain Layer
+
 - `domain/entities`: Core models and structures.
 - `domain/repositories`: Repository interfaces.
 - `domain/services`: Business logic and document management.
 
 ### Application Layer
+
 - `application/config`: Configuration and environment variables.
 - `application/container`: Dependency injection and wiring.
 - `application/bootstrap.rs`: Application startup logic.
@@ -86,59 +88,93 @@ High-performance real-time collaborative document editing server built with Rust
 - `application/use_cases`: Document synchronization use cases.
 
 ### Infrastructure Layer
+
 - `infrastructure/adapters`: Concrete implementations (in-memory, cache, database).
 
 ### Adapter Layer
+
 - **HTTP**: `adapter/http` - Health check (`GET /`) and WebSocket (`GET /ws`) endpoints.
 - **WebSocket**: `adapter/http/websocket` - Handles Yjs JSON protocol over WebSocket.
 - **gRPC**: `adapter/rpc` - Implements the Protobuf-defined `CollaborationService`.
 
 ```mermaid
 graph TD
-  subgraph "Domain Layer"
-    DSvc["domain/services/document_service.rs"]
-    VOs["domain/value_objects"]
-    Entities["domain/entities"]
-    ReposIface["domain/repositories"]
-    Entities --> DSvc
-    VOs --> DSvc
-    DSvc --> ReposIface
-  end
-
-  subgraph "Application Layer"
-    Config["application/config.rs"]
-    Container["application/container.rs"]
-    Bootstrap["application/bootstrap.rs"]
-    DocUseCases["application/use_cases/document_use_cases.rs"]
-    HttpServer["application/servers/http_server.rs"]
-    RpcServer["application/servers/rpc_server.rs"]
-    Config --> Container
-    Container --> Bootstrap
-    Bootstrap --> HttpServer
-    Bootstrap --> RpcServer
-    HttpServer --> DocUseCases
-    RpcServer --> DocUseCases
-    DocUseCases --> DSvc
-  end
-
-  subgraph "Infrastructure Layer"
-    InMemRepo["infrastructure/adapters/in_memory_document_repository.rs"]
-    InMemRepo -.-> ReposIface
-  end
-
-  subgraph "Adapter Layer"
-    HttpAdapter["adapter/http/router.rs"]
-    WSHandler["adapter/http/websocket/ws_handler.rs"]
-    GrpcService["adapter/rpc/collaboration_service.rs"]
-    HttpServer --> HttpAdapter
-    HttpAdapter --> WSHandler
-    WSHandler --> DocUseCases
-    RpcServer --> GrpcService
-    GrpcService --> DocUseCases
-  end
+    subgraph "bin Layer"
+        Server["bin/server.rs<br/>Entry Point"]
+    end
+    
+    subgraph "Application Layer"
+        Bootstrap["ApplicationBootstrap"]
+        Container["Container"]
+        UseCases["DocumentUseCases&lt;InMemoryDocumentRepository&gt;"]
+    end
+    
+    subgraph "Adapter Layer"
+        HttpRouter["HttpRouter"]
+        WSHandler["WebSocketHandler"]
+        GrpcService["CollaborationServiceImpl"]
+    end
+    
+    subgraph "Domain Layer - Abstractions"
+        Factory["RepositoryFactory<br/>(creates infrastructure)"]
+        RepoTrait["DocumentRepository trait<br/>(CRUD abstractions)"]
+        DocService["DocumentService&lt;R&gt;<br/>(business logic)"]
+        Messages["Message Value Objects"]
+        Entities["Document Entities"]
+    end
+    
+    subgraph "Infrastructure Layer - Implementations"
+        InMemRepo["InMemoryDocumentRepository<br/>(concrete CRUD implementation)"]
+    end
+    
+    %% Dependencies
+    Server --> Bootstrap
+    Bootstrap --> Container
+    Container --> Factory
+    Container --> UseCases
+    
+    HttpRouter --> UseCases
+    WSHandler --> UseCases
+    GrpcService --> UseCases
+    
+    UseCases --> DocService
+    DocService --> RepoTrait
+    DocService --> Messages
+    DocService --> Entities
+    
+    Factory --> InMemRepo
+    InMemRepo -.-> RepoTrait
+    
+    %% Repository Methods
+    subgraph "Repository Interface (Domain)"
+        RepoMethods["• create_document()<br/>• get_document()<br/>• get_or_create()<br/>• update_document()<br/>• delete_document()<br/>• list_documents()<br/>• exists()<br/>• count()<br/>• clear()"]
+    end
+    
+    subgraph "Repository Implementation (Infrastructure)"
+        ImplMethods["• HashMap storage<br/>• Thread-safe operations<br/>• Error handling<br/>• Memory management<br/>• Concrete CRUD logic"]
+    end
+    
+    RepoTrait --> RepoMethods
+    InMemRepo --> ImplMethods
+    
+    %% Styling
+    classDef binLayer fill:#ffcccc
+    classDef appLayer fill:#ccffcc  
+    classDef adapterLayer fill:#ccccff
+    classDef domainLayer fill:#ffffcc
+    classDef infraLayer fill:#ffccff
+    classDef methods fill:#f0f0f0
+    
+    class Server binLayer
+    class Bootstrap,Container,UseCases appLayer
+    class HttpRouter,WSHandler,GrpcService adapterLayer
+    class Factory,RepoTrait,DocService,Messages,Entities domainLayer
+    class InMemRepo infraLayer
+    class RepoMethods,ImplMethods methods
 ```
 
 ## Detailed Request Flow
+
 +Below is a sequence diagram showing how client requests flow through the WebSocket and gRPC adapters to the document use cases and how responses are returned.
 
 ```mermaid

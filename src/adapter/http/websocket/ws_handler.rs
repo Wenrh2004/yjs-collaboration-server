@@ -11,7 +11,7 @@ use volo_http::{
 };
 
 use crate::{
-    application::use_cases::document_use_cases::DocumentUseCases,
+    application::services::document_application_service::DocumentUseCases,
     domain::{
         repositories::document_repository::DocumentRepository,
         value_objects::message::{ClientMessage, ServerMessage},
