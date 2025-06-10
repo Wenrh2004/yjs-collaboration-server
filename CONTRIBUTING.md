@@ -1,4 +1,4 @@
- # Contributing Guide
+# Contributing Guide
 
 Thank you for considering contributing to the Yjs Collaboration Server! To get started:
 

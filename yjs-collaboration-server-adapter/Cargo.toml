@@ -1,0 +1,44 @@
+[package]
+name = "yjs-collaboration-server-adapter"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Adapter layer for the Yjs Collaboration Server containing HTTP and RPC interfaces"
+
+[dependencies]
+# Project dependencies
+yjs-collaboration-server-domain = { workspace = true }
+yjs-collaboration-server-common = { workspace = true }
+
+# HTTP & RPC framework
+volo-http = { workspace = true }
+volo-grpc = { workspace = true }
+
+# Protocol handling
+base64 = { workspace = true }
+
+# Asynchronous runtime
+tokio = { workspace = true }
+futures = { workspace = true }
+futures-util = { workspace = true }
+async-stream = { workspace = true }
+
+# Serialization
+sonic-rs = { workspace = true }
+
+# Concurrent data structures
+dashmap = { workspace = true }
+
+# Utilities
+tracing = { workspace = true }
+uuid = { workspace = true }
+
+# Time utilities
+chrono = { workspace = true }
+
+[lib]
+name = "yjs_collaboration_server_adapter"
+path = "src/lib.rs"

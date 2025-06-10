@@ -3804,7 +3804,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea2f10b9bb0928dfb1b42b65e1f9e36f7f54dbdf08457afefb38afcdec4fa2bb"
 
 [[package]]
-name = "yjs-collaboration-server"
+name = "yjs-collaboration-server-adapter"
 version = "0.1.0"
 dependencies = [
  "async-stream",
@@ -3813,19 +3813,70 @@ dependencies = [
  "dashmap",
  "futures",
  "futures-util",
- "once_cell",
- "serde",
- "serde_yaml",
  "sonic-rs 0.5.1",
  "tokio",
  "tracing",
- "tracing-subscriber",
  "uuid",
- "volo",
- "volo-gen",
  "volo-grpc",
  "volo-http",
+ "yjs-collaboration-server-common",
+ "yjs-collaboration-server-domain",
+]
+
+[[package]]
+name = "yjs-collaboration-server-application"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_yaml",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "volo",
+ "volo-grpc",
+ "volo-http",
+ "yjs-collaboration-server-adapter",
+ "yjs-collaboration-server-common",
+ "yjs-collaboration-server-domain",
+ "yjs-collaboration-server-infrastructure",
+]
+
+[[package]]
+name = "yjs-collaboration-server-bin"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+ "volo",
+ "yjs-collaboration-server-application",
+]
+
+[[package]]
+name = "yjs-collaboration-server-common"
+version = "0.1.0"
+dependencies = [
+ "volo-gen",
+]
+
+[[package]]
+name = "yjs-collaboration-server-domain"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "serde",
+ "sonic-rs 0.5.1",
+ "tokio",
  "yrs",
+]
+
+[[package]]
+name = "yjs-collaboration-server-infrastructure"
+version = "0.1.0"
+dependencies = [
+ "dashmap",
+ "once_cell",
+ "tokio",
+ "tracing",
+ "yjs-collaboration-server-domain",
 ]
 
 [[package]]

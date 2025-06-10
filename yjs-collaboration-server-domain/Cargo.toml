@@ -1,0 +1,27 @@
+[package]
+name = "yjs-collaboration-server-domain"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Domain layer for the Yjs Collaboration Server containing core business logic"
+
+[dependencies]
+# CRDT synchronization
+yrs = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+sonic-rs = { workspace = true }
+
+# Asynchronous runtime
+tokio = { workspace = true }
+
+# Utilities
+base64 = { workspace = true }
+
+[lib]
+name = "yjs_collaboration_server_domain"
+path = "src/lib.rs"

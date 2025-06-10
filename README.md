@@ -4,7 +4,8 @@ English | [中文](README_zh.md)
 
 [![Rust](https://img.shields.io/badge/rust-stable-orange.svg)](https://www.rust-lang.org/) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-High-performance real-time collaborative document editing server built with Rust, Yrs (the Rust implementation of Yjs), and Volo HTTP & gRPC.
+High-performance real-time collaborative document editing server built with Rust, Yrs (the Rust implementation of Yjs),
+and Volo HTTP & gRPC.
 
 ## ✨ Features
 
@@ -12,7 +13,8 @@ High-performance real-time collaborative document editing server built with Rust
 - 🔄 CRDT-based: Conflict-free Replicated Data Types ensure consistency across replicas.
 - ⚡ High Performance: Leveraging Rust and asynchronous programming for maximum throughput.
 - 🌐 WebSocket Support: Real-time bidirectional communication over HTTP (`/ws` endpoint).
-- 🎧 gRPC Support: Bi-directional streaming and unary RPC for collaboration (`Collaborate`, `GetDocumentState`, `GetActiveUsers`).
+- 🎧 gRPC Support: Bi-directional streaming and unary RPC for collaboration (`Collaborate`, `GetDocumentState`,
+  `GetActiveUsers`).
 - 🏗️ Clean Architecture: Clear separation of domain, application, and infrastructure layers.
 - 🔒 Type Safety: Rust's strong type system prevents many classes of bugs.
 - ⚙️ Configurable: Control HTTP/gRPC endpoints, log level, and feature toggles via environment variables.
@@ -32,44 +34,44 @@ High-performance real-time collaborative document editing server built with Rust
 
 - [ ] Infrastructure
 
-  - [ ] Caching
-    - [ ] Support Redis
-    - [ ] Support multi-level caching
-  - [ ] Storage
-    - [ ] Support MySQL
-    - [ ] Support MongoDB
+    - [ ] Caching
+        - [ ] Support Redis
+        - [ ] Support multi-level caching
+    - [ ] Storage
+        - [ ] Support MySQL
+        - [ ] Support MongoDB
 
 - [ ] Connectivity
 
-  - [ ] Heartbeat
-  - [ ] Rate limiting
+    - [ ] Heartbeat
+    - [ ] Rate limiting
 
 - [ ] Logging & Monitoring
 
-  - [ ] Dynamic log level adjustment
-  - [ ] Integrate metrics collection (e.g. Prometheus)
+    - [ ] Dynamic log level adjustment
+    - [ ] Integrate metrics collection (e.g. Prometheus)
 
 - [ ] Deployment
 
-  - [ ] Docker image
-  - [ ] Kubernetes deployment
+    - [ ] Docker image
+    - [ ] Kubernetes deployment
 
 - [ ] Testing
 
-  - [ ] Unit test coverage
-  - [ ] Integration tests
+    - [ ] Unit test coverage
+    - [ ] Integration tests
 
 - [ ] Performance Optimization
-  - [ ] Algorithmic improvements
-    - [ ] Delta-only updates
-    - [ ] Compress small updates
-  - [ ] Concurrency optimizations
-    - [ ] Lock-free or fine-grained locks
-    - [ ] Reduce context switches
-  - [ ] Resource pooling
+    - [ ] Algorithmic improvements
+        - [ ] Delta-only updates
+        - [ ] Compress small updates
+    - [ ] Concurrency optimizations
+        - [ ] Lock-free or fine-grained locks
+        - [ ] Reduce context switches
+    - [ ] Resource pooling
 
 - [ ] Server Register & Config
-  - [ ] Nacos
+    - [ ] Nacos
 
 ## 🏗️ Architecture
 
@@ -175,7 +177,8 @@ graph TD
 
 ## Detailed Request Flow
 
-+Below is a sequence diagram showing how client requests flow through the WebSocket and gRPC adapters to the document use cases and how responses are returned.
++Below is a sequence diagram showing how client requests flow through the WebSocket and gRPC adapters to the document
+use cases and how responses are returned.
 
 ```mermaid
 sequenceDiagram
@@ -581,11 +584,11 @@ cargo run --release
 
 - `GET /`: Health check (returns server status)
 - `GET /ws`: WebSocket endpoint for Yjs JSON protocol
-  - Message types:
-    - `sync`: Initial synchronization request
-    - `update`: Apply local updates
-    - `sv`: Fetch missing updates by state vector
-  - Fields: `doc_id`, `update` (Base64-encoded), etc.
+    - Message types:
+        - `sync`: Initial synchronization request
+        - `update`: Apply local updates
+        - `sv`: Fetch missing updates by state vector
+    - Fields: `doc_id`, `update` (Base64-encoded), etc.
 
 ### gRPC
 

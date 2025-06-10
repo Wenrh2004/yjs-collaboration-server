@@ -1,0 +1,16 @@
+[package]
+name = "yjs-collaboration-server-common"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Common utilities and shared components for the Yjs Collaboration Server"
+
+[dependencies]
+volo-gen = { path = "volo-gen" }
+
+[lib]
+name = "yjs_collaboration_server_common"
+path = "src/lib.rs"

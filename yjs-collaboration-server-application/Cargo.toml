@@ -1,0 +1,37 @@
+[package]
+name = "yjs-collaboration-server-application"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Application layer for the Yjs Collaboration Server containing application services and use cases"
+
+[dependencies]
+# Project dependencies
+yjs-collaboration-server-domain = { workspace = true }
+yjs-collaboration-server-infrastructure = { workspace = true }
+yjs-collaboration-server-common = { workspace = true }
+yjs-collaboration-server-adapter = { workspace = true }
+
+# Volo dependencies
+volo = { workspace = true }
+volo-http = { workspace = true }
+volo-grpc = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+
+# Asynchronous runtime
+tokio = { workspace = true }
+
+# Utilities
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+[lib]
+name = "yjs_collaboration_server_application"
+path = "src/lib.rs"
+

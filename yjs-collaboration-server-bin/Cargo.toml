@@ -1,0 +1,21 @@
+[package]
+name = "yjs-collaboration-server-bin"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Binary executable for the Yjs Collaboration Server"
+
+[dependencies]
+# Project dependencies
+yjs-collaboration-server-application = { workspace = true }
+
+# Asynchronous runtime
+volo = { workspace = true }
+tokio = { workspace = true }
+
+[[bin]]
+name = "server"
+path = "src/lib/server.rs"

@@ -1,0 +1,27 @@
+[package]
+name = "yjs-collaboration-server-infrastructure"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Infrastructure layer for the Yjs Collaboration Server implementing repository interfaces"
+
+[dependencies]
+# Project dependencies
+yjs-collaboration-server-domain = { workspace = true }
+
+# Concurrent data structures
+dashmap = { workspace = true }
+
+# Utilities
+once_cell = { workspace = true }
+tracing = { workspace = true }
+
+# Asynchronous runtime
+tokio = { workspace = true }
+
+[lib]
+name = "yjs_collaboration_server_infrastructure"
+path = "src/lib.rs"
