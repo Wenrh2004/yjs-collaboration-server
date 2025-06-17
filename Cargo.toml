@@ -24,7 +24,6 @@ homepage = "https://github.com/Wenrh2004/yjs-collaboration-server"
 # 子包依赖
 yjs-collaboration-server-adapter = { path = "yjs-collaboration-server-adapter" }
 yjs-collaboration-server-application = { path = "yjs-collaboration-server-application" }
-yjs-collaboration-server-bin = { path = "yjs-collaboration-server-bin" }
 yjs-collaboration-server-domain = { path = "yjs-collaboration-server-domain" }
 yjs-collaboration-server-infrastructure = { path = "yjs-collaboration-server-infrastructure" }
 yjs-collaboration-server-common = { path = "yjs-collaboration-server-common" }
@@ -39,7 +38,6 @@ pilota = "*"
 # Asynchronous runtime
 tokio = { version = "1", features = ["full"] }
 futures-util = "0.3.31"
-anyhow = "1.0"
 futures = "0.3"
 async-stream = "0.3"
 

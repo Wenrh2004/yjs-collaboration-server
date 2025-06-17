@@ -12,7 +12,7 @@ use volo_http::{
 use yjs_collaboration_server_domain::{
     repositories::document_repository::DocumentRepository,
     services::document_service::DocumentService,
-    value_objects::message::{ClientMessage, ServerMessage},
+    value_objects::message::ClientMessage,
 };
 
 /// Handles WebSocket upgrade requests from the routing system.
@@ -40,7 +40,7 @@ where
         Box::pin(WebSocketHandler::<R>::handle_socket(
             socket,
             document_service,
-        )) as Pin<Box<dyn Future<Output=()> + Send>>
+        )) as Pin<Box<dyn Future<Output = ()> + Send>>
     })
 }
 
@@ -85,7 +85,7 @@ impl<R: DocumentRepository + Send + Sync + 'static> WebSocketHandler<R> {
         let document_service = self.document_service.clone();
         ws.on_upgrade(move |socket| {
             Box::pin(Self::handle_socket(socket, document_service))
-                as Pin<Box<dyn Future<Output=()> + Send>>
+                as Pin<Box<dyn Future<Output = ()> + Send>>
         })
     }
 
@@ -122,11 +122,34 @@ impl<R: DocumentRepository + Send + Sync + 'static> WebSocketHandler<R> {
                             match client_msg.message_type.as_str() {
                                 // Client requests initial synchronization
                                 "sync" => {
+                                    // Extract client state vector if provided
+                                    let client_state_vector = match &client_msg.update {
+                                        Some(sv_base64) => {
+                                            match base64::engine::general_purpose::STANDARD
+                                                .decode(sv_base64)
+                                            {
+                                                Ok(sv) => Some(sv),
+                                                Err(e) => {
+                                                    warn!(
+                                                        "Failed to decode client state vector: {}",
+                                                        e
+                                                    );
+                                                    None
+                                                }
+                                            }
+                                        }
+                                        None => None,
+                                    };
+
                                     let (response, _receiver) = document_service
-                                        .handle_sync_request(&client_msg.doc_id)
+                                        .handle_sync_request(
+                                            &client_msg.doc_id,
+                                            client_state_vector.as_deref(),
+                                        )
                                         .await;
 
-                                    // Send initial state vector back to client
+                                    // Send sync response back to client containing updates they
+                                    // need
                                     if let Ok(resp_json) = to_string(&response) {
                                         if socket.send(Message::Text(resp_json)).await.is_err() {
                                             warn!("Failed to send sync response to client");

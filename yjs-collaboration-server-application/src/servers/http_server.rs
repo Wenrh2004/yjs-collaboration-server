@@ -8,7 +8,6 @@ use volo_http::{
     Address,
 };
 
-use crate::services::document_application_service::DocumentUseCases;
 use yjs_collaboration_server_adapter::http::router;
 use yjs_collaboration_server_domain::services::document_service::DocumentService;
 use yjs_collaboration_server_infrastructure::adapters::in_memory_document_repository::InMemoryDocumentRepository;

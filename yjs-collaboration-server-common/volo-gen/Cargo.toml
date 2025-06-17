@@ -10,9 +10,7 @@ volo.workspace = true
 volo-grpc.workspace = true
 pilota.workspace = true
 
-anyhow.workspace = true
 futures.workspace = true
-tokio = { workspace = true, features = ["full"] }
 
 [build-dependencies]
 volo-build.workspace = true

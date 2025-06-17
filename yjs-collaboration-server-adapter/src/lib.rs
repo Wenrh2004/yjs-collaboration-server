@@ -6,7 +6,3 @@
 
 pub mod http;
 pub mod rpc;
-
-pub use http::router::HttpRouter;
-// Re-export commonly used adapter types
-pub use rpc::collaboration_service::CollaborationServiceImpl;

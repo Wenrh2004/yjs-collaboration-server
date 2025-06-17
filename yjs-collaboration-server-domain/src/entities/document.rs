@@ -1,6 +1,6 @@
 use yrs::{
-    updates::{decoder::Decode, encoder::Encode}, Doc, ReadTxn, StateVector, Transact,
-    Update,
+    updates::{decoder::Decode, encoder::Encode},
+    Doc, GetString, ReadTxn, StateVector, Transact, Update,
 };
 
 /// Represents a collaborative document that multiple clients can edit simultaneously.
@@ -82,10 +82,67 @@ impl CollaborativeDocument {
     pub fn get_missing_updates(&self, client_state: &[u8]) -> Result<Vec<u8>, String> {
         if let Ok(sv) = StateVector::decode_v1(client_state) {
             let txn = self.doc.transact();
-            let updates = txn.encode_state_as_update_v1(&sv);
+            let updates = txn.encode_state_as_update_v2(&sv);
             Ok(updates)
         } else {
             Err("Failed to decode state vector".to_string())
+        }
+    }
+
+    /// Retrieves the text content of the document.
+    ///
+    /// This method extracts text content from the Yjs document using the correct Yrs API.
+    /// It uses the GetString trait to extract actual text content from TextRef objects.
+    ///
+    /// # Returns
+    ///
+    /// The current text content of the document as a String.
+    pub fn get_text_content(&self) -> String {
+        let txn = self.doc.transact();
+
+        // Try to get the default text object (commonly used root text)
+        let text_ref = self.doc.get_or_insert_text("");
+        let content = text_ref.get_string(&txn);
+
+        // If the default text is not empty, return it
+        if !content.is_empty() {
+            return content;
+        }
+
+        // If no default text exists, try common field names
+        for field_name in ["content", "text", "body", "document"] {
+            let text_ref = self.doc.get_or_insert_text(field_name);
+            let content = text_ref.get_string(&txn);
+            if !content.is_empty() {
+                return content;
+            }
+        }
+
+        // If no text content found, return empty string
+        String::new()
+    }
+
+    /// Retrieves a simple text representation of the document.
+    ///
+    /// This method provides a basic text extraction from the Yjs document,
+    /// suitable for display or basic content operations.
+    ///
+    /// # Returns
+    ///
+    /// A string representing the document's text content.
+    pub fn get_content_as_string(&self) -> String {
+        // For now, use the text content method
+        // In a real implementation, this might extract content from various shared types
+        let text_content = self.get_text_content();
+
+        if text_content.is_empty() {
+            // If no text content, provide a basic representation
+            format!(
+                "Document (State Vector Length: {})",
+                self.get_state_vector().len()
+            )
+        } else {
+            text_content
         }
     }
 }

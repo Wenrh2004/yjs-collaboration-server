@@ -2,7 +2,6 @@ use std::{net::SocketAddr, sync::Arc};
 
 use tracing::info;
 use volo_grpc::server::{Server, ServiceBuilder};
-
 use yjs_collaboration_server_adapter::rpc::collaboration_service::CollaborationServiceImpl;
 use yjs_collaboration_server_common::volo_gen;
 use yjs_collaboration_server_domain::services::document_service::DocumentService;
@@ -40,7 +39,7 @@ impl RpcServer {
                 ServiceBuilder::new(volo_gen::collaboration::CollaborationServiceServer::new(
                     collaboration_service,
                 ))
-                    .build(),
+                .build(),
             )
             .run(addr)
             .await

@@ -1,21 +1,35 @@
-use base64::engine::general_purpose::STANDARD;
-use base64::Engine;
+use std::sync::Arc;
+
+use base64::{engine::general_purpose::STANDARD, Engine};
 use chrono::Utc;
 use dashmap::DashMap;
 use futures::StreamExt;
-use std::sync::Arc;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
 use volo_grpc::{BoxStream, RecvStream, Request, Response, Status};
-
 use yjs_collaboration_server_common::volo_gen::collaboration::{
-    client_message, server_message, AwarenessUpdate, ClientMessage, CollaborationService, DocumentState,
-    ErrorMessage, ErrorType, GetActiveUsersRequest,
-    GetActiveUsersResponse, GetDocumentStateRequest, GetDocumentStateResponse,
-    ServerMessage, SyncResponse as ProtoSyncResponse, UpdateMessage, UserJoined, UserLeft,
+    client_message, server_message, ActiveUser, AwarenessUpdate, ClientMessage,
+    CollaborationService, DocumentState, ErrorMessage, ErrorType, GetActiveUsersRequest,
+    GetActiveUsersResponse, GetDocumentStateRequest, GetDocumentStateResponse, ServerMessage,
+    SyncResponse as ProtoSyncResponse, UpdateMessage, UserJoined, UserLeft,
 };
-use yjs_collaboration_server_domain::repositories::document_repository::DocumentRepository;
-use yjs_collaboration_server_domain::services::document_service::{DocumentService, SyncResponse, UpdateNotification};
+use yjs_collaboration_server_domain::{
+    repositories::document_repository::DocumentRepository,
+    services::document_service::DocumentService,
+};
+
+/// User session information for tracking active users
+#[derive(Clone, Debug)]
+struct UserSession {
+    user_id: String,
+    user_name: String,
+    user_color: String,
+    client_id: String,
+    document_id: String,
+    last_seen: i64,
+    user_metadata: std::collections::HashMap<String, String>,
+    sender: mpsc::Sender<Result<ServerMessage, Status>>,
+}
 
 /// Implementation of the Yjs collaboration gRPC service.
 ///
@@ -25,9 +39,11 @@ use yjs_collaboration_server_domain::services::document_service::{DocumentServic
 pub struct CollaborationServiceImpl<R: DocumentRepository> {
     /// Document service handling core business logic for documents
     document_service: Arc<DocumentService<R>>,
-    /// Manages active connection sessions with session ID as key and message sender channel as value
-    /// Using DashMap for improved concurrent performance compared to Mutex<HashMap>
+    /// Manages active connection sessions with session ID as key and message sender channel as
+    /// value Using DashMap for improved concurrent performance compared to Mutex<HashMap>
     active_sessions: Arc<DashMap<String, mpsc::Sender<Result<ServerMessage, Status>>>>,
+    /// Tracks active user sessions with detailed user information
+    user_sessions: Arc<DashMap<String, UserSession>>,
 }
 
 impl<R: DocumentRepository + Send + Sync + 'static> CollaborationServiceImpl<R> {
@@ -44,6 +60,7 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationServiceImpl<R> 
         Self {
             document_service,
             active_sessions: Arc::new(DashMap::new()),
+            user_sessions: Arc::new(DashMap::new()),
         }
     }
 
@@ -77,7 +94,7 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationServiceImpl<R> 
                 client_message::MessageType::SyncRequest(sync_req) => {
                     let (response, _) = self
                         .document_service
-                        .handle_sync_request(&document_id)
+                        .handle_sync_request(&document_id, Some(&sync_req.state_vector.to_vec()))
                         .await;
 
                     let proto_response = ServerMessage {
@@ -85,12 +102,7 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationServiceImpl<R> 
                         timestamp: Utc::now().timestamp(),
                         message_type: Some(server_message::MessageType::SyncResponse(
                             ProtoSyncResponse {
-                                update_data: response
-                                    .update
-                                    .map(|u| STANDARD.decode(&u).unwrap_or_default())
-                                    .unwrap_or_default()
-                                    .into(),
-                                state_vector: response.state_vector.into(),
+                                update_data: response.update.unwrap_or_default().into(),
                             },
                         )),
                     };
@@ -125,6 +137,25 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationServiceImpl<R> 
                 client_message::MessageType::JoinDocument(join) => {
                     info!("User {} joined document {}", join.user_id, document_id);
 
+                    // Create user session
+                    let session_id = format!("{}_{}", document_id, client_id);
+                    let user_session = UserSession {
+                        user_id: join.user_id.to_string(),
+                        user_name: join.user_name.to_string(),
+                        user_color: join.user_color.to_string(),
+                        client_id: client_id.to_string(),
+                        document_id: document_id.to_string(),
+                        last_seen: Utc::now().timestamp(),
+                        user_metadata: join
+                            .user_metadata
+                            .iter()
+                            .map(|(k, v)| (k.to_string(), v.to_string()))
+                            .collect(),
+                        sender: tx.clone(),
+                    };
+
+                    self.update_user_session(session_id, user_session);
+
                     // Notify other users
                     let user_joined = ServerMessage {
                         document_id: document_id.clone().into(),
@@ -144,11 +175,15 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationServiceImpl<R> 
                 client_message::MessageType::LeaveDocument(leave) => {
                     info!("User {} left document {}", leave.user_id, document_id);
 
+                    // Remove user session
+                    let session_id = format!("{}_{}", document_id, client_id);
+                    self.remove_user_session(&session_id);
+
                     let user_left = ServerMessage {
                         document_id: document_id.clone().into(),
                         timestamp: Utc::now().timestamp(),
                         message_type: Some(server_message::MessageType::UserLeft(UserLeft {
-                            user_id: leave.user_id.clone(),
+                            user_id: leave.user_id,
                             client_id: client_id.clone().into(),
                         })),
                     };
@@ -242,10 +277,63 @@ impl<R: DocumentRepository + Send + Sync + 'static> CollaborationServiceImpl<R> 
             }
         }
     }
+
+    /// Gets active users for a specific document.
+    ///
+    /// # Parameters
+    ///
+    /// * `document_id` - Unique identifier for the document
+    ///
+    /// # Returns
+    ///
+    /// Vector of ActiveUser structs representing users currently active in the document
+    fn get_active_users_for_document(&self, document_id: &str) -> Vec<ActiveUser> {
+        self.user_sessions
+            .iter()
+            .filter_map(|entry| {
+                let user_session = entry.value();
+                if user_session.document_id == document_id {
+                    Some(ActiveUser {
+                        user_id: user_session.user_id.clone().into(),
+                        user_name: user_session.user_name.clone().into(),
+                        user_color: user_session.user_color.clone().into(),
+                        client_id: user_session.client_id.clone().into(),
+                        last_seen: user_session.last_seen,
+                        user_metadata: user_session
+                            .user_metadata
+                            .iter()
+                            .map(|(k, v)| (k.clone().into(), v.clone().into()))
+                            .collect(),
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    /// Updates user session information.
+    ///
+    /// # Parameters
+    ///
+    /// * `session_id` - Unique session identifier
+    /// * `user_session` - User session data to store
+    fn update_user_session(&self, session_id: String, user_session: UserSession) {
+        self.user_sessions.insert(session_id, user_session);
+    }
+
+    /// Removes a user session.
+    ///
+    /// # Parameters
+    ///
+    /// * `session_id` - Unique session identifier to remove
+    fn remove_user_session(&self, session_id: &str) {
+        self.user_sessions.remove(session_id);
+    }
 }
 
 impl<R: DocumentRepository + Send + Sync + 'static> CollaborationService
-for CollaborationServiceImpl<R>
+    for CollaborationServiceImpl<R>
 {
     /// Handles collaboration requests from clients.
     ///
@@ -326,23 +414,18 @@ for CollaborationServiceImpl<R>
         // 获取文档状态
         let (response, _) = self
             .document_service
-            .handle_sync_request(&req.document_id)
+            .handle_sync_request(&req.document_id, None)
             .await;
 
         let document_state = DocumentState {
-            state_vector: response
-                .update
-                .as_ref()
-                .map(|u| STANDARD.decode(&u).unwrap_or_default())
-                .unwrap_or_default()
-                .into(), // TODO: extract actual state vector from response
+            state_vector: response.state_vector.unwrap_or_default().into(),
             document_data: response
                 .update
                 .as_ref()
                 .map(|u| STANDARD.decode(&u).unwrap_or_default())
                 .unwrap_or_default()
                 .into(),
-            active_users: vec![], // TODO: implement active user management
+            active_users: self.get_active_users_for_document(&req.document_id),
             last_modified: chrono::Utc::now().timestamp(),
         };
 
@@ -368,10 +451,9 @@ for CollaborationServiceImpl<R>
         &self,
         request: Request<GetActiveUsersRequest>,
     ) -> Result<Response<GetActiveUsersResponse>, Status> {
-        let _req = request.into_inner();
+        let req = request.into_inner();
 
-        // TODO: implement fetching active users from session management
-        let active_users = vec![];
+        let active_users = self.get_active_users_for_document(&req.document_id);
 
         Ok(Response::new(GetActiveUsersResponse { active_users }))
     }
@@ -388,6 +470,7 @@ impl<R: DocumentRepository> Clone for CollaborationServiceImpl<R> {
         Self {
             document_service: Arc::clone(&self.document_service),
             active_sessions: Arc::clone(&self.active_sessions),
+            user_sessions: Arc::clone(&self.user_sessions),
         }
     }
 }

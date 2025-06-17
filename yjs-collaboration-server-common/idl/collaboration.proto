@@ -60,8 +60,6 @@ message SyncRequest {
 message SyncResponse {
   // Y.js update binary data
   bytes update_data = 1;
-  // 当前文档的state vector
-  bytes state_vector = 2;
 }
 
 // Y.js 更新消息
